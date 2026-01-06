@@ -9,23 +9,24 @@ on:
 
 jobs:
   build:
-    # Specify runner +  build & upload the static files as an artifact
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      # - name: Build static files
-      #   id: build
-      #   run: |
-      #     # <Not provided for brevity>
-      #     # At a minimum this step should build the static files of your site
-      #     # <Not provided for brevity>
+    - uses: actions/checkout@v3
 
-      - name: Upload static files as artifact
-        id: deployment
-        uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action
-        with:
-          path: .
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version-file: ".bun-version"
 
+    - name: Build
+      run: |
+        bun i
+        bun run build:github
+
+    - name: Upload static files as artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./dist
+     
   deploy:
     name: Deploy static assets
     runs-on: ubuntu-latest
