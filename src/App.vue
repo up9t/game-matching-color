@@ -55,7 +55,8 @@ function start(
     insertText(canvas, context, "You Win!");
 
     if (requestAnimationFrameIDRef.value !== null) {
-      return cancelAnimationFrame(requestAnimationFrameIDRef.value);
+      cancelAnimationFrame(requestAnimationFrameIDRef.value);
+      return;
     }
   }
 
@@ -67,7 +68,9 @@ function start(
     if (isClickedBetween(canvas, x, y)) {
       if (isColorPicked()) {
         if (isColorMatch(index, position)) {
-          POSITION_AVAILABLE[PREVIOUS.clickedIndex!] = null;
+          if (typeof PREVIOUS.clickedIndex === "number") {
+            POSITION_AVAILABLE[PREVIOUS.clickedIndex] = null;
+          }
           POSITION_AVAILABLE[index] = null;
         }
         PREVIOUS.clickedIndex = null;
@@ -111,7 +114,7 @@ function isColorPicked(): boolean {
   return typeof PREVIOUS.clickedIndex === "number";
 }
 
-function isValidColorPicked(position: number | null) {
+function isValidColorPicked(position: number | null): position is number {
   return typeof position === "number";
 }
 
