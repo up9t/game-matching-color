@@ -1,20 +1,22 @@
-var canvas = document.querySelector("canvas") as HTMLCanvasElement;
-var context = canvas.getContext("2d") as CanvasRenderingContext2D;
+<script setup lang="ts">
+import { onMounted, ref } from "vue";
 
-var TILE_SIZE: number = 4;
-var BLOCK_SIZE: number = 100;
-var SPACE_BEETWEEN_BLOCK: number = 5;
-canvas.width = TILE_SIZE * BLOCK_SIZE + SPACE_BEETWEEN_BLOCK * TILE_SIZE - 1;
-canvas.height = TILE_SIZE * BLOCK_SIZE + SPACE_BEETWEEN_BLOCK * TILE_SIZE - 1;
+const canvasElement = ref<HTMLCanvasElement | null>(null);
+
+const TILE_SIZE: number = 4;
+const BLOCK_SIZE: number = 100;
+const SPACE_BEETWEEN_BLOCK: number = 5;
 
 type Position = {
   positionX: number | null | undefined;
   positionY: number | null | undefined;
 };
+
 type Previous = {
   selectedColor: number | undefined | null;
   clickedIndex: number | undefined | null;
 };
+
 const COLOR: Array<string> = [];
 const POSITION_AVAILABLE: Array<number | null> = [];
 
@@ -22,7 +24,8 @@ const CLICK: Position = {
   positionX: undefined,
   positionY: undefined,
 };
-var PREVIOUS: Previous = {
+
+const PREVIOUS: Previous = {
   selectedColor: undefined,
   clickedIndex: undefined,
 };
@@ -40,24 +43,20 @@ new Array(TILE_SIZE ** 2 / 2).fill(null).forEach((_, i) => {
 
 randomize(POSITION_AVAILABLE);
 
-window.onclick = function (event: MouseEvent): void {
-  PREVIOUS.selectedColor = null;
-  PREVIOUS.clickedIndex = null;
-};
+const requestAnimationFrameIDRef = ref<number | null>(null);
 
-canvas.onclick = function (event: MouseEvent): void {
-  event.stopPropagation();
-  CLICK.positionX = event.clientX;
-  CLICK.positionY = event.clientY;
-};
+function start(
+  canvas: HTMLCanvasElement,
+  context: CanvasRenderingContext2D,
+): void {
+  clearCanvas(canvas, context);
 
-var start = window.requestAnimationFrame(() => draw(context));
-
-function draw(context: CanvasRenderingContext2D): void {
-  clearCanvas(context);
   if (checkWin(POSITION_AVAILABLE)) {
-    insertText(context, "You Win!");
-    return window.cancelAnimationFrame(start);
+    insertText(canvas, context, "You Win!");
+
+    if (requestAnimationFrameIDRef.value !== null) {
+      return cancelAnimationFrame(requestAnimationFrameIDRef.value);
+    }
   }
 
   POSITION_AVAILABLE.forEach((position: number | null, index: number) => {
@@ -65,7 +64,7 @@ function draw(context: CanvasRenderingContext2D): void {
       (index % TILE_SIZE) * (BLOCK_SIZE + SPACE_BEETWEEN_BLOCK),
       Math.floor(index / TILE_SIZE) * (BLOCK_SIZE + SPACE_BEETWEEN_BLOCK),
     ];
-    if (isClickedBetween(x, y)) {
+    if (isClickedBetween(canvas, x, y)) {
       if (isColorPicked()) {
         if (isColorMatch(index, position)) {
           POSITION_AVAILABLE[PREVIOUS.clickedIndex!] = null;
@@ -84,7 +83,9 @@ function draw(context: CanvasRenderingContext2D): void {
       CLICK.positionY = null;
     }
     context.fillStyle =
-      typeof position === "number" ? COLOR[position] : "transparent";
+      typeof position === "number"
+        ? (COLOR[position] as string)
+        : "transparent";
     context.globalAlpha = PREVIOUS.clickedIndex === index ? 0.7 : 1;
     context.lineWidth = PREVIOUS.clickedIndex === index ? 10 : 1;
     context.beginPath();
@@ -94,7 +95,9 @@ function draw(context: CanvasRenderingContext2D): void {
     context.closePath();
   });
 
-  start = window.requestAnimationFrame(() => draw(context));
+  requestAnimationFrameIDRef.value = window.requestAnimationFrame(() =>
+    start(canvas, context),
+  );
 }
 
 function isColorMatch(index: number, position: number | null): boolean {
@@ -112,7 +115,11 @@ function isValidColorPicked(position: number | null) {
   return typeof position === "number";
 }
 
-function isClickedBetween(x: number, y: number): boolean {
+function isClickedBetween(
+  canvas: HTMLCanvasElement,
+  x: number,
+  y: number,
+): boolean {
   const [OFFSET_X, OFFSET_Y] = [
     window.innerWidth / 2 - canvas.width / 2,
     window.innerHeight / 2 - canvas.height / 2,
@@ -129,30 +136,37 @@ function isClickedBetween(x: number, y: number): boolean {
 }
 
 function insertText(
+  canvas: HTMLCanvasElement,
   context: CanvasRenderingContext2D,
-  text: string
+  text: string,
 ): TextMetrics {
   context.font = "50px Arial";
   context.fillStyle = "white";
-  let measureText = context.measureText(text);
+  const measureText = context.measureText(text);
   context.fillText(
     text,
     canvas.width / 2 - measureText.width / 2,
-    canvas.height / 2 + measureText.actualBoundingBoxAscent / 2
+    canvas.height / 2 + measureText.actualBoundingBoxAscent / 2,
   );
   return measureText;
 }
 
 function randomize(position: Array<number | null>): void {
   for (let index = 0; index < position.length - 1; index++) {
-    let victim: number = getIntegerRandomNumberBetween(
+    const victim: number = getIntegerRandomNumberBetween(
       index,
-      position.length - 1
+      position.length - 1,
     );
-    let victimPosition = position[victim];
-    let prevPosition = position[index];
-    position.splice(victim, 1, prevPosition);
-    position.splice(index, 1, victimPosition);
+    const victimPosition = position[victim];
+    const prevPosition = position[index];
+
+    if (typeof prevPosition === "number") {
+      position.splice(victim, 1, prevPosition);
+    }
+
+    if (typeof victimPosition === "number") {
+      position.splice(index, 1, victimPosition);
+    }
   }
 }
 
@@ -160,10 +174,51 @@ function getIntegerRandomNumberBetween(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min);
 }
 
-function clearCanvas(context: CanvasRenderingContext2D): void {
+function clearCanvas(
+  canvas: HTMLCanvasElement,
+  context: CanvasRenderingContext2D,
+): void {
   context.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function checkWin(blocks: Array<number | null>): boolean {
   return blocks.every((block) => typeof block !== "number");
 }
+onMounted(() => {
+  const canvas = canvasElement.value;
+
+  if (!canvas) {
+    throw new Error("canvas element is undefined");
+  }
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("failed to retrieve context from canvas");
+  }
+
+  canvas.width = TILE_SIZE * BLOCK_SIZE + SPACE_BEETWEEN_BLOCK * TILE_SIZE - 1;
+  canvas.height = TILE_SIZE * BLOCK_SIZE + SPACE_BEETWEEN_BLOCK * TILE_SIZE - 1;
+
+  addEventListener("click", (): void => {
+    PREVIOUS.selectedColor = null;
+    PREVIOUS.clickedIndex = null;
+  });
+
+  canvas.addEventListener("click", (event: MouseEvent): void => {
+    event.stopPropagation();
+
+    CLICK.positionX = event.clientX;
+    CLICK.positionY = event.clientY;
+  });
+
+  start(canvas, context);
+});
+</script>
+
+<template>
+  <canvas ref="canvasElement"></canvas>
+</template>
+
+<style scoped>
+</style>
