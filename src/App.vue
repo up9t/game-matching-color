@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 
-const canvasElement = ref<HTMLCanvasElement | null>(null);
-
-const TILE_SIZE: number = 4;
-const BLOCK_SIZE: number = 100;
-const SPACE_BEETWEEN_BLOCK: number = 5;
-
 type Position = {
   positionX: number | null | undefined;
   positionY: number | null | undefined;
@@ -17,7 +11,12 @@ type Previous = {
   clickedIndex: number | undefined | null;
 };
 
-const COLOR: Array<string> = [];
+const canvasElement = ref<HTMLCanvasElement | null>(null);
+
+const TILE_SIZE: number = 4;
+const BLOCK_SIZE: number = 100;
+const SPACE_BEETWEEN_BLOCK: number = 5;
+const COLORS: Array<string> = [];
 const POSITION_AVAILABLE: Array<number | null> = [];
 
 const CLICK: Position = {
@@ -30,32 +29,16 @@ const PREVIOUS: Previous = {
   clickedIndex: undefined,
 };
 
-new Array(TILE_SIZE ** 2 / 2).fill(null).forEach((_, i) => {
-  POSITION_AVAILABLE.push(i, i);
-  const [red, green, blue] = [
-    getIntegerRandomNumberBetween(0, 255),
-    getIntegerRandomNumberBetween(0, 255),
-    getIntegerRandomNumberBetween(0, 255),
-  ];
-  const color = `rgb(${red}, ${green}, ${blue})`;
-  COLOR.push(color);
-});
+let requestAnimationFrameID: null | number = null;
 
-randomize(POSITION_AVAILABLE);
-
-const requestAnimationFrameIDRef = ref<number | null>(null);
-
-function start(
-  canvas: HTMLCanvasElement,
-  context: CanvasRenderingContext2D,
-): void {
+function Start(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D): void {
   clearCanvas(canvas, context);
 
   if (checkWin(POSITION_AVAILABLE)) {
     insertText(canvas, context, "You Win!");
 
-    if (requestAnimationFrameIDRef.value !== null) {
-      cancelAnimationFrame(requestAnimationFrameIDRef.value);
+    if (requestAnimationFrameID !== null) {
+      cancelAnimationFrame(requestAnimationFrameID);
       return;
     }
   }
@@ -85,10 +68,7 @@ function start(
       CLICK.positionX = null;
       CLICK.positionY = null;
     }
-    context.fillStyle =
-      typeof position === "number"
-        ? (COLOR[position] as string)
-        : "transparent";
+    context.fillStyle = typeof position === "number" ? (COLORS[position] as string) : "transparent";
     context.globalAlpha = PREVIOUS.clickedIndex === index ? 0.7 : 1;
     context.lineWidth = PREVIOUS.clickedIndex === index ? 10 : 1;
     context.beginPath();
@@ -98,9 +78,7 @@ function start(
     context.closePath();
   });
 
-  requestAnimationFrameIDRef.value = window.requestAnimationFrame(() =>
-    start(canvas, context),
-  );
+  requestAnimationFrameID = requestAnimationFrame(() => Start(canvas, context));
 }
 
 function isColorMatch(index: number, position: number | null): boolean {
@@ -118,23 +96,17 @@ function isValidColorPicked(position: number | null): position is number {
   return typeof position === "number";
 }
 
-function isClickedBetween(
-  canvas: HTMLCanvasElement,
-  x: number,
-  y: number,
-): boolean {
+function isClickedBetween(canvas: HTMLCanvasElement, x: number, y: number): boolean {
   const [OFFSET_X, OFFSET_Y] = [
     window.innerWidth / 2 - canvas.width / 2,
     window.innerHeight / 2 - canvas.height / 2,
   ];
   const isBetweenXPosition: boolean = !CLICK.positionX
     ? false
-    : CLICK.positionX >= x + OFFSET_X &&
-      CLICK.positionX <= x + BLOCK_SIZE + OFFSET_X;
+    : CLICK.positionX >= x + OFFSET_X && CLICK.positionX <= x + BLOCK_SIZE + OFFSET_X;
   const isBetweenYPosition: boolean = !CLICK.positionY
     ? false
-    : CLICK.positionY >= y + OFFSET_Y &&
-      CLICK.positionY <= y + BLOCK_SIZE + OFFSET_Y;
+    : CLICK.positionY >= y + OFFSET_Y && CLICK.positionY <= y + BLOCK_SIZE + OFFSET_Y;
   return isBetweenXPosition && isBetweenYPosition;
 }
 
@@ -156,10 +128,7 @@ function insertText(
 
 function randomize(position: Array<number | null>): void {
   for (let index = 0; index < position.length - 1; index++) {
-    const victim: number = getIntegerRandomNumberBetween(
-      index,
-      position.length - 1,
-    );
+    const victim: number = getRandomIntN(index, position.length - 1);
     const victimPosition = position[victim];
     const prevPosition = position[index];
 
@@ -173,14 +142,11 @@ function randomize(position: Array<number | null>): void {
   }
 }
 
-function getIntegerRandomNumberBetween(min: number, max: number): number {
+function getRandomIntN(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min);
 }
 
-function clearCanvas(
-  canvas: HTMLCanvasElement,
-  context: CanvasRenderingContext2D,
-): void {
+function clearCanvas(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D): void {
   context.clearRect(0, 0, canvas.width, canvas.height);
 }
 
@@ -215,7 +181,21 @@ onMounted(() => {
     CLICK.positionY = event.clientY;
   });
 
-  start(canvas, context);
+  Start(canvas, context);
+
+  for (let i = 0; i < TILE_SIZE ** 2 / 2; i++) {
+    POSITION_AVAILABLE.push(i, i);
+
+    const [red, green, blue] = [
+      getRandomIntN(0, 255),
+      getRandomIntN(0, 255),
+      getRandomIntN(0, 255),
+    ];
+    const color = `rgb(${red}, ${green}, ${blue})`;
+    COLORS.push(color);
+  }
+
+  randomize(POSITION_AVAILABLE);
 });
 </script>
 
@@ -223,5 +203,4 @@ onMounted(() => {
   <canvas ref="canvasElement"></canvas>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>
